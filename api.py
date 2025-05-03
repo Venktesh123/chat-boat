@@ -199,8 +199,14 @@ def initialize_vector_db():
             transcript_content = cleaned_text
         
         print("Building vector database... please wait")
-        chunks = simple_chunk_text(transcript_content)
-        embeddings = embed_model.encode(chunks)
+        # Note: Using a local variable name first, then assigning to global
+        local_chunks = simple_chunk_text(transcript_content)
+        local_embeddings = embed_model.encode(local_chunks)
+        
+        # Now assign to globals
+        chunks = local_chunks
+        embeddings = local_embeddings
+        
         print(f"Vector database built with {len(chunks)} chunks")
     except Exception as e:
         print(f"Error initializing vector database: {str(e)}")
@@ -209,7 +215,7 @@ def initialize_vector_db():
 
 # Semantic search using NumPy
 def semantic_search(query_text, top_k=3):
-    global embed_model, chunks, embeddings
+    # Not using global declarations here since we're not assigning to these variables
     
     # Ensure vector DB is initialized
     if embed_model is None or chunks is None or embeddings is None:
