@@ -1,4 +1,4 @@
-name: Python AI Chatbot CI/CD
+name: Python AI Chatbot CI/CD with Debug
 on:
   push:
     branches: ["main"]
@@ -34,6 +34,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Debug Network
+        run: |
+          echo "GitHub Actions IP information:"
+          curl -s ifconfig.me
+          echo ""
+          echo "Checking connectivity to EC2 host:"
+          nc -zv ${{ secrets.EC2_HOST }} 22 -w 5 || echo "Connection failed"
+
       - name: Create SSH directory
         run: |
           mkdir -p ~/.ssh
@@ -46,56 +54,12 @@ jobs:
           known_hosts: unnecessary
           if_key_exists: replace
 
-      - name: Adding Known Hosts
+      - name: Debug SSH Key
         run: |
-          # Use StrictHostKeyChecking=no for first connection
-          echo "Host ${{ secrets.EC2_HOST }}" > ~/.ssh/config
-          echo "  StrictHostKeyChecking no" >> ~/.ssh/config
-          echo "  UserKnownHostsFile /dev/null" >> ~/.ssh/config
-          chmod 600 ~/.ssh/config
+          ls -la ~/.ssh/
+          echo "SSH Key Fingerprint:"
+          ssh-keygen -l -f ~/.ssh/id_rsa || echo "Failed to get fingerprint"
 
-      - name: Test SSH Connection
+      - name: SSH with Verbose Output
         run: |
-          ssh -o BatchMode=yes -o ConnectTimeout=10 ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} echo "SSH connection successful"
-
-      - name: Create .env file for Google API keys
-        run: |
-          echo "# Google API Keys for Gemini" > .env
-          echo "GOOGLE_API_KEY_1=${{ secrets.GOOGLE_API_KEY_1 }}" >> .env
-          echo "GOOGLE_API_KEY_2=${{ secrets.GOOGLE_API_KEY_2 }}" >> .env
-          echo "GOOGLE_API_KEY_3=${{ secrets.GOOGLE_API_KEY_3 }}" >> .env
-          echo "GOOGLE_API_KEY_4=${{ secrets.GOOGLE_API_KEY_4 }}" >> .env
-
-      - name: Create requirements.txt with Flask-CORS
-        run: |
-          # Ensure requirements.txt has flask-cors
-          if ! grep -q "flask-cors" requirements.txt; then
-            echo "flask-cors>=3.0.0" >> requirements.txt
-          fi
-
-      - name: Copy files to EC2
-        run: |
-          # Create remote directory if not exists
-          ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "mkdir -p ~/chatbot"
-
-          # Backup existing files on EC2 before replacing
-          ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "if [ -d ~/chatbot ]; then cd ~/chatbot && mkdir -p backup && cp -r *.py *.txt *.sh .env backup/ 2>/dev/null || true; fi"
-
-          # Copy all Python files
-          scp *.py ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/chatbot/
-
-          # Copy deployment script
-          scp deploy.sh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/chatbot/
-
-          # Copy environment file
-          scp .env ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/chatbot/
-
-          # Copy text files
-          scp *.txt ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/chatbot/
-
-          # Make deploy script executable
-          ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "chmod +x ~/chatbot/deploy.sh"
-
-      - name: Deploy to EC2
-        run: |
-          ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "cd ~/chatbot && sudo ./deploy.sh"
+          ssh -v -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} echo "SSH connection test"
