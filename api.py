@@ -39,6 +39,12 @@ def get_api_keys():
 API_KEYS = get_api_keys()
 CURRENT_KEY_INDEX = 0
 
+# Global variables for vector embeddings
+embed_model = None
+chunks = None
+embeddings = None
+course_outcomes = None
+
 def get_next_api_key():
     global CURRENT_KEY_INDEX
     if not API_KEYS:
@@ -50,12 +56,6 @@ def get_next_api_key():
 TRANSCRIPT_FILE = "transcript.txt"
 CLEANED_TRANSCRIPT_FILE = "cleaned_transcript.txt"
 COURSE_OUTCOMES_FILE = "course_outcomes.txt"
-
-# Global variables for vector embeddings
-embed_model = None
-chunks = None
-embeddings = None
-course_outcomes = None
 
 def clean_text(text):
     text = re.sub(r"\s+", " ", text)
@@ -329,8 +329,9 @@ def ask():
 @app.route("/generate-questions", methods=["POST"])
 def api_generate_questions():
     # Initialize vector DB if not already initialized
-    if embed_model is None:
-        initialize_vector_db()
+    if embed_model is None or chunks is None or embeddings is None:
+        if not initialize_vector_db():
+            return jsonify({"error": "Failed to initialize vector database"}), 500
     
     # Get request data
     data = request.get_json()
