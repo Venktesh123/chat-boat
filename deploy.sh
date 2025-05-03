@@ -17,7 +17,7 @@ cd $APP_DIR
 if ! command -v python3 &>/dev/null; then
     echo "Installing Python..."
     sudo apt-get update
-    sudo apt-get install -y python3 python3-venv python3-pip
+    sudo apt-get install -y python3 python3-venv python3-pip python3-dev
 fi
 
 # Create or update virtual environment
@@ -35,15 +35,31 @@ source venv/bin/activate
 # Install or update dependencies
 echo "Installing dependencies..."
 pip install --upgrade pip
+pip install wheel
 pip install -r requirements.txt
 
-# Make sure flask-cors is installed
+# Make sure specific dependencies are installed
+echo "Ensuring all dependencies are installed..."
 pip install flask-cors
+pip install sentence-transformers
 
-# Check if the transcript file exists
+# Check for transcript files
+echo "Checking for required files..."
 if [ ! -f "transcript.txt" ]; then
     echo "Warning: transcript.txt not found. Creating a placeholder..."
     echo "This is a placeholder for the transcript file." > transcript.txt
+fi
+
+if [ ! -f "cleaned_transcript.txt" ]; then
+    echo "Warning: cleaned_transcript.txt not found. Using transcript.txt as a fallback..."
+    cp transcript.txt cleaned_transcript.txt
+fi
+
+if [ ! -f "course_outcomes.txt" ]; then
+    echo "Warning: course_outcomes.txt not found. Creating a placeholder..."
+    echo "CO1: Understand basic principles of the subject" > course_outcomes.txt
+    echo "CO2: Apply key concepts in problem-solving scenarios" >> course_outcomes.txt
+    echo "CO3: Analyze complex situations and develop solutions" >> course_outcomes.txt
 fi
 
 # Check if the .env file exists
@@ -156,6 +172,9 @@ if [ -f "/etc/ssl/certs/nginx-selfsigned.crt" ] && [ -f "/etc/ssl/private/nginx-
     echo "HTTPS: https://$IP_ADDRESS"
 fi
 echo ""
-echo "You can test it with:"
+echo "You can test the chatbot with:"
 echo "curl -X POST -H \"Content-Type: application/json\" -d '{\"query\":\"What is concrete?\"}' http://localhost:4000/ask"
+echo ""
+echo "You can test the question generator with:"
+echo "curl -X POST -H \"Content-Type: application/json\" -d '{\"course_outcome\":\"CO1: Understand basic principles\",\"bloom_level\":\"Understand\"}' http://localhost:4000/generate-questions"
 echo ""
